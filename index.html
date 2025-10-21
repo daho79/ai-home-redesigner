@@ -116,248 +116,265 @@
     </div>
 
     <script>
-        const imageUpload = document.getElementById('image-upload');
-        const imagePreviewContainer = document.getElementById('image-preview-container');
-        const uploadPrompt = document.getElementById('upload-prompt');
-        const imagePreview = document.getElementById('image-preview');
-        const promptInput = document.getElementById('prompt');
-        const redesignButton = document.getElementById('redesign-button');
-        const styleChoices = document.getElementById('style-choices');
-        
-        const outputImageContainer = document.getElementById('output-image-container');
-        const outputPlaceholder = document.getElementById('output-placeholder');
-        const loader = document.getElementById('loader');
-        const outputImage = document.getElementById('output-image');
-        const downloadButton = document.getElementById('download-button');
+        document.addEventListener('DOMContentLoaded', () => {
+            const imageUpload = document.getElementById('image-upload');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            const uploadPrompt = document.getElementById('upload-prompt');
+            const imagePreview = document.getElementById('image-preview');
+            const promptInput = document.getElementById('prompt');
+            const redesignButton = document.getElementById('redesign-button');
+            const styleChoices = document.getElementById('style-choices');
+            
+            const outputImageContainer = document.getElementById('output-image-container');
+            const outputPlaceholder = document.getElementById('output-placeholder');
+            const loader = document.getElementById('loader');
+            const outputImage = document.getElementById('output-image');
+            const downloadButton = document.getElementById('download-button');
 
-        const outputDescription = document.getElementById('output-description');
-        const descriptionPlaceholder = document.getElementById('description-placeholder');
+            const outputDescription = document.getElementById('output-description');
+            const descriptionPlaceholder = document.getElementById('description-placeholder');
 
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
 
-        let base64ImageData = null;
-        let fileMimeType = null;
-        
-        const stylePrompts = {
-            'Modern': 'Redesign this in a modern style, focusing on clean lines, a simple color palette, and the use of materials like metal, glass, and steel. ',
-            'Minimalist': 'Transform this space with a minimalist aesthetic. Emphasize simplicity, neutral tones, and uncluttered surfaces. ',
-            'Industrial': 'Give this an industrial-style makeover, highlighting raw elements like exposed brick, distressed wood, and metal fixtures. ',
-            'Scandinavian': 'Redesign this with a Scandinavian influence, prioritizing light, airy spaces, natural textures, and functional, simple furniture. ',
-            'Bohemian': 'Embrace a bohemian vibe for this redesign. Use a rich mix of patterns, vibrant colors, natural materials, and a relaxed, eclectic feel. ',
-            'Farmhouse': 'Create a modern farmhouse look. This should blend rustic charm with clean, contemporary elements for a cozy and sophisticated feel. ',
-            'Coastal': 'Redesign this with a coastal or beach house theme. Use a light and breezy color palette, natural materials like wood and rattan, and comfortable furnishings. ',
-            'Mid-Century Modern': 'Transform this with a Mid-Century Modern design, characterized by organic shapes, simple functionality, and a seamless flow between indoors and outdoors. '
-        };
+            let base64ImageData = null;
+            let fileMimeType = null;
+            
+            const stylePrompts = {
+                'Modern': 'Redesign this in a modern style, focusing on clean lines, a simple color palette, and the use of materials like metal, glass, and steel. ',
+                'Minimalist': 'Transform this space with a minimalist aesthetic. Emphasize simplicity, neutral tones, and uncluttered surfaces. ',
+                'Industrial': 'Give this an industrial-style makeover, highlighting raw elements like exposed brick, distressed wood, and metal fixtures. ',
+                'Scandinavian': 'Redesign this with a Scandinavian influence, prioritizing light, airy spaces, natural textures, and functional, simple furniture. ',
+                'Bohemian': 'Embrace a bohemian vibe for this redesign. Use a rich mix of patterns, vibrant colors, natural materials, and a relaxed, eclectic feel. ',
+                'Farmhouse': 'Create a modern farmhouse look. This should blend rustic charm with clean, contemporary elements for a cozy and sophisticated feel. ',
+                'Coastal': 'Redesign this with a coastal or beach house theme. Use a light and breezy color palette, natural materials like wood and rattan, and comfortable furnishings. ',
+                'Mid-Century Modern': 'Transform this with a Mid-Century Modern design, characterized by organic shapes, simple functionality, and a seamless flow between indoors and outdoors. '
+            };
 
-        // --- Event Listeners ---
-        imagePreviewContainer.addEventListener('click', () => imageUpload.click());
+            // --- Event Listeners ---
+            imagePreviewContainer.addEventListener('click', () => imageUpload.click());
 
-        imageUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                fileMimeType = file.type;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
-                    imagePreview.classList.remove('hidden');
-                    uploadPrompt.classList.add('hidden');
-                    base64ImageData = e.target.result.split(',')[1];
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        
-        styleChoices.addEventListener('change', (event) => {
-            const selectedStyle = event.target.value;
-            const currentPrompt = promptInput.value;
-            let newPrompt = currentPrompt;
-
-            // Remove any existing style prompt prefix from the map
-            Object.values(stylePrompts).forEach(promptText => {
-                if (newPrompt.startsWith(promptText)) {
-                    newPrompt = newPrompt.substring(promptText.length);
+            imageUpload.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    fileMimeType = file.type;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        imagePreview.src = e.target.result;
+                        imagePreview.classList.remove('hidden');
+                        uploadPrompt.classList.add('hidden');
+                        base64ImageData = e.target.result.split(',')[1];
+                    };
+                    reader.readAsDataURL(file);
                 }
             });
+            
+            styleChoices.addEventListener('change', (event) => {
+                const selectedStyle = event.target.value;
+                const currentPrompt = promptInput.value;
+                let newPrompt = currentPrompt;
 
-            // Prepend the new style prompt if a style is selected
-            if (selectedStyle && stylePrompts[selectedStyle]) {
-                newPrompt = stylePrompts[selectedStyle] + newPrompt;
-            }
-
-            promptInput.value = newPrompt;
-            promptInput.focus();
-        });
-
-        redesignButton.addEventListener('click', handleRedesign);
-        downloadButton.addEventListener('click', downloadImage);
-
-        // --- Core Logic ---
-        async function handleRedesign() {
-            // 1. Validation
-            if (!base64ImageData) {
-                showError("Please upload an image first.");
-                return;
-            }
-            if (!promptInput.value.trim()) {
-                showError("Please describe the changes you want.");
-                return;
-            }
-            hideError();
-
-            // 2. Set loading state
-            setLoading(true);
-
-            try {
-                // 3. Generate Image
-                const generatedImageBase64 = await generateImage(promptInput.value, base64ImageData, fileMimeType);
-                outputImage.src = `data:image/png;base64,${generatedImageBase64}`;
-                outputImage.classList.remove('hidden');
-                outputPlaceholder.classList.add('hidden');
-                downloadButton.classList.remove('hidden');
-
-                // 4. Generate Description
-                descriptionPlaceholder.textContent = "Analyzing the new design...";
-                const description = await generateDescription(generatedImageBase64);
-                outputDescription.innerHTML = `<p>${description.replace(/\n/g, '<br>')}</p>`;
-                descriptionPlaceholder.classList.add('hidden');
-
-            } catch (error) {
-                console.error("An error occurred:", error);
-                showError("Sorry, something went wrong while creating your design. Please try again.");
-                // Reset output on error
-                outputImage.classList.add('hidden');
-                downloadButton.classList.add('hidden');
-                outputPlaceholder.classList.remove('hidden');
-                descriptionPlaceholder.classList.remove('hidden');
-                outputDescription.innerHTML = '';
-                outputDescription.appendChild(descriptionPlaceholder);
-                descriptionPlaceholder.textContent = "A detailed description of the design will be generated here.";
-            } finally {
-                // 5. Unset loading state
-                setLoading(false);
-            }
-        }
-        
-        async function makeApiCallWithRetry(apiUrl, payload, maxRetries = 3) {
-            let attempt = 0;
-            while (attempt < maxRetries) {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                    });
-
-                    if (!response.ok) {
-                        const errorBody = await response.text();
-                        console.error(`API Error (Attempt ${attempt + 1}): ${response.status} ${response.statusText}`, errorBody);
-                        throw new Error(`API request failed with status ${response.status}`);
+                // Remove any existing style prompt prefix from the map
+                Object.values(stylePrompts).forEach(promptText => {
+                    if (newPrompt.startsWith(promptText)) {
+                        newPrompt = newPrompt.substring(promptText.length);
                     }
-                    return await response.json();
+                });
+
+                // Prepend the new style prompt if a style is selected
+                if (selectedStyle && stylePrompts[selectedStyle]) {
+                    newPrompt = stylePrompts[selectedStyle] + newPrompt;
+                }
+
+                promptInput.value = newPrompt;
+                promptInput.focus();
+            });
+
+            redesignButton.addEventListener('click', handleRedesign);
+            downloadButton.addEventListener('click', downloadImage);
+
+            // --- Core Logic ---
+            async function handleRedesign() {
+                // 1. Validation
+                if (!base64ImageData) {
+                    showError("Please upload an image first.");
+                    return;
+                }
+                if (!promptInput.value.trim()) {
+                    showError("Please describe the changes you want.");
+                    return;
+                }
+                hideError();
+
+                // 2. Set loading state
+                setLoading(true);
+
+                try {
+                    // 3. Generate Image
+                    const generatedImageBase64 = await generateImage(promptInput.value, base64ImageData, fileMimeType);
+                    outputImage.src = `data:image/png;base64,${generatedImageBase64}`;
+                    outputImage.classList.remove('hidden');
+                    outputPlaceholder.classList.add('hidden');
+                    downloadButton.classList.remove('hidden');
+
+                    // 4. Generate Description
+                    descriptionPlaceholder.textContent = "Analyzing the new design...";
+                    const description = await generateDescription(generatedImageBase64);
+                    outputDescription.innerHTML = `<p>${description.replace(/\n/g, '<br>')}</p>`;
+                    descriptionPlaceholder.classList.add('hidden');
+
                 } catch (error) {
-                    attempt++;
-                    if (attempt >= maxRetries) throw error;
-                    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-                    await new Promise(res => setTimeout(res, delay));
+                    console.error("An error occurred:", error);
+                    showError(error.message || "Sorry, something went wrong while creating your design. Please try again.");
+                    // Reset output on error
+                    outputImage.classList.add('hidden');
+                    downloadButton.classList.add('hidden');
+                    outputPlaceholder.classList.remove('hidden');
+                    descriptionPlaceholder.classList.remove('hidden');
+                    outputDescription.innerHTML = '';
+                    outputDescription.appendChild(descriptionPlaceholder);
+                    descriptionPlaceholder.textContent = "A detailed description of the design will be generated here.";
+                } finally {
+                    // 5. Unset loading state
+                    setLoading(false);
                 }
             }
-        }
-
-
-        async function generateImage(userPrompt, imageBase64, mimeType) {
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: `Your task is to act as a professional architectural visualizer. You will be given an image of a building and a description of a new style. Your goal is to apply the new style to the building *without altering its fundamental structure*. This means the exact position, size, and shape of all doors, windows, rooflines, and other core architectural features MUST remain identical to the original image. You are only changing materials, colors, landscaping, and decorative elements based on this prompt: ${userPrompt}. The output must be a photorealistic image that looks like the original house was renovated, not replaced.` },
-                        {
-                            inlineData: {
-                                mimeType: mimeType,
-                                data: imageBase64
-                            }
-                        }
-                    ]
-                }],
-                generationConfig: {
-                    responseModalities: ['IMAGE']
-                },
-            };
-
-            const result = await makeApiCallWithRetry(apiUrl, payload);
-            const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-
-            if (!base64Data) {
-                throw new Error("Could not find image data in the API response.");
-            }
-            return base64Data;
-        }
-
-        async function generateDescription(imageBase64) {
-            const apiKey = ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: "Act as an interior designer. Describe this redesigned home in a detailed and appealing way for a homeowner. Focus on the style, materials, key features, and overall ambiance. Do not mention that you are an AI." },
-                        {
-                            inlineData: {
-                                mimeType: "image/png",
-                                data: imageBase64
+            async function makeApiCallWithRetry(apiUrl, payload, maxRetries = 3) {
+                let attempt = 0;
+                while (attempt < maxRetries) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (!response.ok) {
+                            const errorBody = await response.text();
+                            console.error(`API Error (Attempt ${attempt + 1}): ${response.status} ${response.statusText}`, errorBody);
+                            if (response.status === 403) {
+                                throw new Error('API request failed with a 403 (Forbidden) error. This often indicates a problem with the API key permissions or project billing. Please verify your Google Cloud project configuration.');
                             }
+                            throw new Error(`API request failed with status ${response.status}`);
                         }
-                    ]
-                }],
-            };
-
-            const result = await makeApiCallWithRetry(apiUrl, payload);
-            const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            if (!text) {
-                throw new Error("Could not find text description in the API response.");
+                        return await response.json();
+                    } catch (error) {
+                        attempt++;
+                        if (attempt >= maxRetries) throw error;
+                        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+                        await new Promise(res => setTimeout(res, delay));
+                    }
+                }
             }
-            return text;
-        }
-
-        function downloadImage() {
-            if (!outputImage.src || outputImage.classList.contains('hidden')) return;
-
-            const link = document.createElement('a');
-            link.href = outputImage.src;
-            link.download = 'ai-redesigned-home.png';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
 
 
-        // --- UI Helper Functions ---
-        function setLoading(isLoading) {
-            if (isLoading) {
-                redesignButton.disabled = true;
-                redesignButton.textContent = 'Generating...';
-                loader.classList.remove('hidden');
-                outputImage.classList.add('hidden');
-                downloadButton.classList.add('hidden');
-                outputPlaceholder.classList.add('hidden');
-                descriptionPlaceholder.textContent = "Generating description...";
-            } else {
-                redesignButton.disabled = false;
-                redesignButton.textContent = 'Redesign My Home';
-                loader.classList.add('hidden');
+            async function generateImage(userPrompt, imageBase64, mimeType) {
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: `Your task is to act as a professional architectural visualizer. You will be given an image of a building and a description of a new style. Your goal is to apply the new style to the building *without altering its fundamental structure*. This means the exact position, size, and shape of all doors, windows, rooflines, and other core architectural features MUST remain identical to the original image. You are only changing materials, colors, landscaping, and decorative elements based on this prompt: ${userPrompt}. The output must be a photorealistic image that looks like the original house was renovated, not replaced.` },
+                            {
+                                inlineData: {
+                                    mimeType: mimeType,
+                                    data: imageBase64
+                                }
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE']
+                    },
+                };
+
+                const result = await makeApiCallWithRetry(apiUrl, payload);
+                
+                if (result.promptFeedback && result.promptFeedback.blockReason) {
+                    throw new Error(`Image generation blocked: ${result.promptFeedback.blockReason}. Please try a different image or prompt.`);
+                }
+                
+                const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                if (!base64Data) {
+                    throw new Error("Could not find image data in the API response. The AI may have been unable to process this request.");
+                }
+                return base64Data;
             }
-        }
 
-        function showError(message) {
-            errorText.textContent = message;
-            errorMessage.classList.remove('hidden');
-        }
+            async function generateDescription(imageBase64) {
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: "Act as an interior designer. Describe this redesigned home in a detailed and appealing way for a homeowner. Focus on the style, materials, key features, and overall ambiance. Do not mention that you are an AI." },
+                            {
+                                inlineData: {
+                                    mimeType: "image/png",
+                                    data: imageBase64
+                                }
+                            }
+                        ]
+                    }],
+                };
 
-        function hideError() {
-            errorMessage.classList.add('hidden');
-        }
+                const result = await makeApiCallWithRetry(apiUrl, payload);
 
+                if (result.promptFeedback && result.promptFeedback.blockReason) {
+                    throw new Error(`Description generation blocked: ${result.promptFeedback.blockReason}.`);
+                }
+                
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!text) {
+                    throw new Error("Could not find text description in the API response.");
+                }
+                return text;
+            }
+
+            function downloadImage() {
+                if (!outputImage.src || outputImage.classList.contains('hidden')) return;
+
+                const link = document.createElement('a');
+                link.href = outputImage.src;
+                link.download = 'ai-redesigned-home.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+
+            // --- UI Helper Functions ---
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    redesignButton.disabled = true;
+                    redesignButton.textContent = 'Generating...';
+                    loader.classList.remove('hidden');
+                    outputImage.classList.add('hidden');
+                    downloadButton.classList.add('hidden');
+                    outputPlaceholder.classList.add('hidden');
+                    descriptionPlaceholder.textContent = "Generating description...";
+                } else {
+                    redesignButton.disabled = false;
+                    redesignButton.textContent = 'Redesign My Home';
+                    loader.classList.add('hidden');
+                }
+            }
+
+            function showError(message) {
+                errorText.textContent = message;
+                errorMessage.classList.remove('hidden');
+            }
+
+            function hideError() {
+                errorMessage.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
 
